@@ -38,7 +38,10 @@ jobs:
       - name: Decode keystore (optional)
         if: ${{ env.SHELL_KEYSTORE_BASE64 != '' }}
         run: |
-          echo "$SHELL_KEYSTORE_BASE64" | base64 -d > /tmp/shell.keystore
+          # 用 printf 避免 echo 对反斜杠的转义；tr -d '[:space:]' 剔除复制时
+          # 混入的空格/换行/制表符，否则 base64 -d 会报 "invalid input"。
+          printf '%s' "$SHELL_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > /tmp/shell.keystore
+          test -s /tmp/shell.keystore
           echo "SHELL_KEYSTORE_FILE=/tmp/shell.keystore" >> "$GITHUB_ENV"
 
       - name: Build APKs
