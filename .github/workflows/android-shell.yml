@@ -1,4 +1,5 @@
 name: Build Android Shell APK
+# 重新触发：Secret 已补全 base64
 
 on:
   workflow_dispatch:
