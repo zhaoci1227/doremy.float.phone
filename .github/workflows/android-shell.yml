@@ -38,9 +38,10 @@ jobs:
       - name: Decode keystore (optional)
         if: ${{ env.SHELL_KEYSTORE_BASE64 != '' }}
         run: |
-          # 用 printf 避免 echo 对反斜杠的转义；tr -d '[:space:]' 剔除复制时
-          # 混入的空格/换行/制表符，否则 base64 -d 会报 "invalid input"。
-          printf '%s' "$SHELL_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > /tmp/shell.keystore
+          # tr -cd 只保留合法 base64 字符（A-Za-z0-9+/=），删掉复制时混入的
+          # 空格/换行/制表符/全角空格/零宽字符/中文等一切非法字符。
+          # printf '%s' 避免 echo 对反斜杠的转义。
+          printf '%s' "$SHELL_KEYSTORE_BASE64" | tr -cd 'A-Za-z0-9+/=' | base64 -d > /tmp/shell.keystore
           test -s /tmp/shell.keystore
           echo "SHELL_KEYSTORE_FILE=/tmp/shell.keystore" >> "$GITHUB_ENV"
 
