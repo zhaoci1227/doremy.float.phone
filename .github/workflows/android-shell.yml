@@ -38,10 +38,26 @@ jobs:
       - name: Decode keystore (optional)
         if: ${{ env.SHELL_KEYSTORE_BASE64 != '' }}
         run: |
-          # tr -cd 只保留合法 base64 字符（A-Za-z0-9+/=），删掉复制时混入的
-          # 空格/换行/制表符/全角空格/零宽字符/中文等一切非法字符。
-          # printf '%s' 避免 echo 对反斜杠的转义。
-          printf '%s' "$SHELL_KEYSTORE_BASE64" | tr -cd 'A-Za-z0-9+/=' | base64 -d > /tmp/shell.keystore
+          # 用 Python 解码：先过滤掉一切非法字符，再自动修正 padding。
+          # 打印长度便于排查（值本身被 GitHub 遮蔽，不会泄露）。
+          python3 - <<'PY'
+          import base64, os, sys
+          raw = os.environ.get("SHELL_KEYSTORE_BASE64", "")
+          print(f"[decode] raw length = {len(raw)}")
+          alphabet = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+          clean = "".join(c for c in raw if c in alphabet)
+          print(f"[decode] clean length = {len(clean)}")
+          clean = clean.rstrip("=")
+          clean += "=" * (-len(clean) % 4)
+          try:
+              data = base64.b64decode(clean, validate=True)
+          except Exception as e:
+              print(f"[decode] base64 decode failed: {e}", file=sys.stderr)
+              sys.exit(1)
+          with open("/tmp/shell.keystore", "wb") as f:
+              f.write(data)
+          print(f"[decode] wrote {len(data)} bytes to /tmp/shell.keystore")
+          PY
           test -s /tmp/shell.keystore
           echo "SHELL_KEYSTORE_FILE=/tmp/shell.keystore" >> "$GITHUB_ENV"
 
